@@ -25,6 +25,7 @@ class ChatBot:
 
     def chat_answer(self):
         res = self.chat.invoke(self.messages)
+
         return res
 
 
