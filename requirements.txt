@@ -199,3 +199,5 @@ yarg==0.1.9
 yarl==1.18.3
 zipp==3.18.2
 zope.interface==7.0.1
+
+pinecone~=5.4.2
