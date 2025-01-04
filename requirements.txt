@@ -202,3 +202,4 @@ zope.interface==7.0.1
 
 pinecone~=5.4.2
 textblob~=0.18.0.post0
+transformers~=4.47.1
