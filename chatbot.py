@@ -156,12 +156,10 @@ class ChatBot:
         self.messages.append(ai_answer)
         return ai_answer
 
-    def main(self):
-        while True:
-            user_prompt = input("Talk to me!")
-            ai_answer = self.interaction(user_prompt)
-            self.prev_question = user_prompt
-            self.prev_answer = ai_answer
+    def main(self, user_prompt):
+        ai_answer = self.interaction(user_prompt)
+        self.prev_question = user_prompt
+        self.prev_answer = ai_answer
 
     @staticmethod
     def erase_index_content(index):
