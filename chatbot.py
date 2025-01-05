@@ -13,7 +13,8 @@ class ChatBot:
     def __init__(self):
         self.groq_api_key, self.openai_api_key, self.db_api_key = self.get_env_info()
         self.chat = ChatGroq(temperature=0, model_name="llama-3.1-70b-versatile")
-        self.chat_classifier_continuous_learning, self.chat_classifier_valid_correction = self.chat
+        self.chat_classifier_continuous_learning = self.chat
+        self.chat_classifier_valid_correction = self.chat
         self.db = Pinecone(api_key=self.db_api_key, environment="us-west1-gcp")
         self.embeddings_model = SentenceTransformer('bert-base-nli-mean-tokens')
         self.messages = []
@@ -58,48 +59,47 @@ class ChatBot:
         )
         return result
 
-    def classifier_continuous_learning(self, user_message):
+    def classifier_preference(self, user_message):
 
         preference_labels = {'Envolve preferências sobre como a resposta deve ser dada': True,
                              'Não envolve preferências sobre como a resposta deve ser dada': False}
-        corrections_labels = {'É uma correção do usuário': True, 'Não é uma correção do usuário': False}
 
         prompt = f"Classifique a seguinte mensagem entre as classes\
-               [{" ".join(preference_labels.keys())}] e depois entre as classes\
-               [{" ".join(corrections_labels.keys())}]: \n\
+               {" ".join(preference_labels.keys())}\
                Mensagem = {user_message} \n\
-               Retorne apenas o nome das categorias mais prováveis por grupo.\
-               Exemplo de resposta: [Categoria Grupo 1] [Categoria Grupo 2]"
+               Retorne apenas o nome da categoria mais provável.\
+               Exemplo de resposta: Categoria X"
 
-        detected_classes = self.chat_classifier_continuous_learning.invoke(prompt)
+        detected_class = self.chat_classifier_continuous_learning.invoke(prompt)
+        preference_class = preference_labels.get(detected_class.content, False)
 
-        answer = detected_classes.content
-        classes = re.findall(r"\[(.*?)]", answer)
+        return preference_class
 
-        preference_class = preference_labels.get(classes[0], False)
-        correction_class = corrections_labels.get(classes[1], False)
-
-        return preference_class, correction_class
-
-    def classifier_valid_correction(self, user_correction):
-        corrections_labels = {'Sim': True, 'Não': False}
-        prompt = f"Essa correção está correta? Responda com Sim ou Não: {user_correction}"
-        detected_classes = self.chat_classifier_valid_correction.invoke(prompt)
-        answer = detected_classes.content
-        valid_correction = corrections_labels.get(answer, False)
+    def classifier_valid_correction(self, user_correction, prev_question, prev_answer):
+        valid_correction = False
+        if prev_answer is not None and prev_question is not None:
+            prompt = (f"Considerando o diálogo abaixo, a correção do usuário está correta? Responda com Sim ou Não: \n"
+                      f"Usuário: {prev_question} \n"
+                      f"Resposta: {prev_answer}' \n"
+                      f"Usuário: {user_correction}")
+            corrections_labels = {'sim': True, 'não': False}
+            detected_classes = self.chat_classifier_valid_correction.invoke(prompt)
+            answer = detected_classes.content.replace('.', '').lower()
+            valid_correction = corrections_labels.get(answer, False)
         return valid_correction
 
-    def interaction(self, user_prompt):
-        self.write_prompt(user_prompt)
+    def interaction(self, user_prompt, prev_question, prev_answer):
+        self.write_prompt(user_prompt, prev_question, prev_answer)
         ai_answer = self.informed_chat_answer(user_prompt)
         print(ai_answer)
+        return ai_answer
 
-    def write_prompt(self, user_prompt):
-        is_preference, is_correction = self.classifier_continuous_learning(HumanMessage(user_prompt))
+    def write_prompt(self, user_prompt, prev_question, prev_answer):
+        is_preference = self.classifier_preference(HumanMessage(user_prompt))
         if is_preference:
             print('Is preference')
             self.store_interaction_in_db(user_prompt, self.index_preferences, 'preference')
-        if is_correction and self.classifier_valid_correction(user_prompt):
+        if self.classifier_valid_correction(user_prompt, prev_question, prev_answer):
             print('Is correction')
             self.store_interaction_in_db(user_prompt, self.index_corrections, 'correction')
 
@@ -152,9 +152,12 @@ class ChatBot:
         return ai_answer.content
 
     def main(self):
+        prev_question = prev_answer = None
         while True:
             user_prompt = input("Talk to me!")
-            self.interaction(user_prompt)
+            ai_answer = self.interaction(user_prompt, prev_question, prev_answer)
+            prev_question = user_prompt
+            prev_answer = ai_answer
 
     @staticmethod
     def erase_index_content(index):
