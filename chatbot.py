@@ -44,25 +44,22 @@ class ChatBot(Check_Correction):
 
         return preference_class
 
-    def classifier_valid_correction(self, user_correction):
-        valid_correction = False
-        if self.prev_answer is not None and self.prev_question is not None:
-            valid_correction = self.validate_user_correction(user_correction, self.prev_question, self.prev_answer, self.chat)
+    def classifier_valid_info(self, user_correction):
+        valid_correction = self.validate_user_info(user_correction, self.chat)
         return valid_correction
 
     def interaction(self, user_prompt):
         self.write_prompt(user_prompt)
         ai_answer = self.informed_chat_answer(user_prompt)
-        print(ai_answer)
         return ai_answer
 
     def write_prompt(self, user_prompt):
-        self.messages.append(user_prompt)
+        self.messages.append(f"Input do usuário: {user_prompt}")
         is_preference = self.classifier_preference(HumanMessage(user_prompt))
         if is_preference:
             self.db.store_interaction_in_db(self.embeddings_model, user_prompt, self.db.index_preferences, 'preference')
-        if self.classifier_valid_correction(user_prompt):
-            self.db.store_interaction_in_db(self.embeddings_model, user_prompt, self.db.index_corrections, 'correction')
+        if self.classifier_valid_info(user_prompt):
+            self.db.store_interaction_in_db(self.embeddings_model, user_prompt, self.db.index_corrections, 'info')
 
     def prompt_for_retrieving_relevant_info(self, user_query):
 
@@ -72,7 +69,7 @@ class ChatBot(Check_Correction):
         # Preferences:
         preferences_db = self.db.index_preferences.query(
             vector=query_vector.tolist(),
-            top_k=10,
+            top_k=5,
             include_metadata=True
         )
 
@@ -94,20 +91,33 @@ class ChatBot(Check_Correction):
             relevant_responses_corrections = [res['metadata']['original_question'] for res in corrections_db['matches']]
             relevant_responses_corrections = list(set(relevant_responses_corrections))
             relevant_responses_corrections = [i for i in relevant_responses_corrections if i != user_query]
-            context = context + ' ' + 'Correções do usuário: ' + '\n'.join(relevant_responses_corrections) \
+            context = context + ' ' + 'Mais informações de contexto: ' + '\n'.join(relevant_responses_corrections) \
                 if relevant_responses_corrections else context
 
-        prompt = f"Baseado no seguinte contexto:\n{context}\n\nPergunta: {user_query}" if context != '' else user_query
-        self.messages.append(prompt)
-        self.messages = list(set(self.messages))
+        prompt = (f"Baseado no seguinte contexto:\n{context}\n\n"
+                  f"Retorne a melhor resposta para o input: {user_query}") if context != '' \
+            else f"Retorne a melhor resposta para o input: {user_query}"
+        return prompt
 
     def informed_chat_answer(self, user_message):
-        self.prompt_for_retrieving_relevant_info(user_message)
-        ai_answer = self.chat.invoke(self.messages).content
-        self.messages.append(ai_answer)
+        prompt = self.prompt_for_retrieving_relevant_info(user_message)
+        context = self.get_context(prompt)
+        ai_answer = self.chat.invoke(context).content
+        self.messages.append(f"Output da IA: {ai_answer}")
         return ai_answer
+
+    def get_context(self, prompt, k=10):
+        """À medida que o histórico de mensagens cresce, o contexto necessário para gerar respostas pode se tornar
+        muito grande, afetando a qualidade das respostas e aumentando o tempo e custo de processamento. Para
+        otimizar, o modelo considerará apenas os últimos 5 inputs do usuário e as 5 respostas da IA, totalizando 10
+        mensagens. Esse parâmetro (k) pode ser ajustado futuramente.
+        """
+        initial_context = 'Você é um chatbot projetado para ajudar as pessoas respondendo perguntas. Seu nome é ConfIA.'
+        messages_considered = self.messages[-k:]
+        return f"{initial_context}. Tendo em vista o histórico das mensagens: {";".join(messages_considered)} {prompt}"
 
     def main(self, user_prompt):
         ai_answer = self.interaction(user_prompt)
         self.prev_question = user_prompt
         self.prev_answer = ai_answer
+        return ai_answer
