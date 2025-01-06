@@ -16,7 +16,9 @@ class Check_Correction:
     def validate_with_ai(user_correction, ai):
         """ Aqui utilizamos o próprio LLM para obter a validade da correção do usuário. O chatbot só aceitará/salvará
         informações  que forem verídicas."""
-        prompt = f"Essa informação é falaciosa: {user_correction}? Responda apenas com sim ou não"
+        prompt = (f"Essa informação é falsa: {user_correction}? Responda apenas com sim ou não. Se for algo que você "
+                  f"não consegue afirmar se é falso ou não, como por exemplo informações subjetivas, características"
+                  f" sobre o usuário, etc, retorne não.")
         detected_classes = ai.invoke(prompt)
         answer = detected_classes.content.replace('.', '').lower()
         corrections_labels = {'não': True, 'sim': False}

@@ -65,6 +65,7 @@ class ChatBot(Check_Correction):
             self.db.store_interaction_in_db(user_prompt, self.db.index_corrections, 'info')
         else:
             self.messages[-1] = self.messages[-1] + '. A informação desse input é falsa'
+            print(self.messages[-1])
 
     def prompt_for_retrieving_relevant_info(self, user_query):
 
