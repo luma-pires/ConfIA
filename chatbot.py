@@ -4,6 +4,7 @@ import os
 from dotenv import load_dotenv
 from langchain.schema import (HumanMessage)
 from langchain_groq import ChatGroq
+from embedding import Embedding
 
 
 class ChatBot(Check_Correction):
@@ -16,7 +17,8 @@ class ChatBot(Check_Correction):
         self.chat = ChatGroq(temperature=0, model_name="llama-3.1-70b-versatile")
         self.chat_classifier_continuous_learning = self.chat_classifier_valid_correction = self.chat
         self.prev_question = self.prev_answer = None
-        self.db.restarting_indexes(self.embeddings_model)
+        self.db.restarting_indexes()
+        self.embeddings_model = Embedding()
 
     @staticmethod
     def get_env_info():
@@ -51,24 +53,23 @@ class ChatBot(Check_Correction):
         self.write_prompt(user_prompt)
         ai_answer = self.informed_chat_answer(user_prompt)
         saving_interaction_in_db = self.messages[-2] + '; ' + self.messages[-1]
-        self.db.store_interaction_in_db(self.embeddings_model, saving_interaction_in_db, self.db.index_corrections,
-                                        'interaction')
+        self.db.store_interaction_in_db(saving_interaction_in_db, self.db.index_corrections, 'interaction')
         return ai_answer
 
     def write_prompt(self, user_prompt):
         self.messages.append(f"Input do usuário: {user_prompt}")
         is_preference = self.classifier_preference(HumanMessage(user_prompt))
         if is_preference:
-            self.db.store_interaction_in_db(self.embeddings_model, user_prompt, self.db.index_preferences, 'preference')
+            self.db.store_interaction_in_db(user_prompt, self.db.index_preferences, 'preference')
         if self.classifier_valid_info(user_prompt):
-            self.db.store_interaction_in_db(self.embeddings_model, user_prompt, self.db.index_corrections, 'info')
+            self.db.store_interaction_in_db(user_prompt, self.db.index_corrections, 'info')
         else:
             self.messages[-1] = self.messages[-1] + '. A informação desse input é falsa'
 
     def prompt_for_retrieving_relevant_info(self, user_query):
 
         context = ''
-        query_vector = self.embeddings_model.encode(user_query)
+        query_vector = self.embeddings_model.embeddings_model.encode(user_query)
 
         # Preferences:
         preferences_db = self.db.index_preferences.query(

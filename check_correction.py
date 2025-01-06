@@ -1,7 +1,5 @@
-from embedding import Embedding
 
-
-class Check_Correction(Embedding):
+class Check_Correction:
 
     def __init__(self):
         super().__init__()
