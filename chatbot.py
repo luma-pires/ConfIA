@@ -31,11 +31,13 @@ class ChatBot(Check_Correction):
         preference_labels = {'Envolve preferências sobre como a resposta deve ser dada': True,
                              'Não envolve preferências sobre como a resposta deve ser dada': False}
 
-        prompt = f"Classifique a seguinte mensagem entre as classes\
-               {" ".join(preference_labels.keys())}\
-               Mensagem = {user_message} \n\
-               Retorne apenas o nome da categoria mais provável.\
-               Exemplo de resposta: Categoria X"
+        prompt = (
+            f"Classifique a seguinte mensagem entre as classes:\n"
+            f'{" ".join(preference_labels.keys())}\n'
+            f'Mensagem = {user_message} \n'
+            f'Retorne apenas o nome da categoria mais provável.\n'
+            f'Exemplo de resposta: Categoria X'
+        )
 
         detected_class = self.chat_classifier_continuous_learning.invoke(prompt)
         preference_class = preference_labels.get(detected_class.content, False)

@@ -4,14 +4,20 @@ FROM python:3.12-slim
 WORKDIR /app
 
 # Copie os arquivos do projeto para o contêiner
-COPY . /app
+COPY . .
 
 # Atualizar pip
 RUN pip install --no-cache-dir --upgrade pip
 
 # Instale as dependências
 RUN pip install --no-cache-dir -r requirements.txt
-
+RUN pip install pinecone \
+    python-dotenv \
+    langchain \
+    streamlit \
+    sentence-transformers \
+    langchain-groq \
+    torch
 
 # Exponha a porta que o Streamlit usará
 EXPOSE 8501
