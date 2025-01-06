@@ -1,4 +1,5 @@
 from pinecone import Pinecone, ServerlessSpec
+from datetime import datetime
 
 
 class DataBase:
@@ -40,3 +41,11 @@ class DataBase:
         namespaces = stats_index.get("namespaces", {})
         n_vectors = sum(ns.get("vector_count", 0) for ns in namespaces.values())
         index.delete(delete_all=True) if n_vectors != 0 else None
+
+    @staticmethod
+    def store_interaction_in_db(embeddings_model, user_prompt, index, interaction):
+        user_embedding = embeddings_model.encode(user_prompt)
+        data_id = str(interaction) + '_' + datetime.now().strftime("%Y%m%d_%H%M%S")
+        index.upsert(
+            [(data_id, user_embedding.tolist(), {'original_question': user_prompt})]
+        )

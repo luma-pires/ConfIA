@@ -1,16 +1,14 @@
 from embedding import Embedding
+from db import DataBase
+from check_correction import Check_Correction
 import os
 from dotenv import load_dotenv
 from langchain.schema import (HumanMessage)
-from typing_extensions import TypedDict, List
-from typing import Annotated
-from datetime import datetime
-from langgraph.graph.message import add_messages
 from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_groq import ChatGroq
 
 
-class ChatBot(Embedding):
+class ChatBot(Embedding, DataBase, Check_Correction):
 
     def __init__(self):
         super().__init__()
@@ -69,16 +67,9 @@ class ChatBot(Embedding):
         self.messages.append(user_prompt)
         is_preference = self.classifier_preference(HumanMessage(user_prompt))
         if is_preference:
-            self.store_interaction_in_db(user_prompt, self.index_preferences, 'preference')
+            self.store_interaction_in_db(self.embeddings_model, user_prompt, self.index_preferences, 'preference')
         if self.classifier_valid_correction(user_prompt):
-            self.store_interaction_in_db(user_prompt, self.index_corrections, 'correction')
-
-    def store_interaction_in_db(self, user_prompt, index, interaction):
-        user_embedding = self.embeddings_model.encode(user_prompt)
-        data_id = str(interaction) + '_' + datetime.now().strftime("%Y%m%d_%H%M%S")
-        index.upsert(
-            [(data_id, user_embedding.tolist(), {'original_question': user_prompt})]
-        )
+            self.store_interaction_in_db(self.embeddings_model, user_prompt, self.index_corrections, 'correction')
 
     def prompt_for_retrieving_relevant_info(self, user_query):
 
