@@ -8,7 +8,7 @@ Este projeto programa o comportamento do ConfIA, um chatbot capaz de aprender co
 Certifique-se de adicionar um arquivo .env no diretório do projeto, contendo as seguintes informações:
 
 ```python
-LLM_API_KEY=your_llm_api_key
+GROQ_API_KEY=your_groq_api_key
 DB_API_KEY=your_db_api_key
 ```
 
