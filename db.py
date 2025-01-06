@@ -12,10 +12,13 @@ class DataBase:
         self.index_corrections = self.get_index('index-corrections')
 
     def checking_indexes(self):
+        """ Cria os indexes dn banco de dados vetorial, caso já não existam. Isso evita erros caso o index não exista"""
         self.creating_index_if_it_does_not_exists('index-preferences')
         self.creating_index_if_it_does_not_exists('index-corrections')
 
     def restarting_indexes(self):
+        """ Quando o chat se reinicia, é preciso apagar a memória armazenada da interação anterior. Caso contrário ela
+        pode interferir nas futuras respostas do chatbot"""
         self.erase_index_content(self.index_preferences)
         self.erase_index_content(self.index_corrections)
 
@@ -37,13 +40,14 @@ class DataBase:
 
     @staticmethod
     def erase_index_content(index):
-        stats_index = index.describe_index_stats().get("namespaces", {})
-        namespaces = stats_index.get("namespaces", {})
-        n_vectors = sum(ns.get("vector_count", 0) for ns in namespaces.values())
+        """ Apaga o conteúdo do index, mas não o index em si, pois será reaproveitado em usos futuros do chatbot"""
+        stats_index = index.describe_index_stats()
+        n_vectors = stats_index.get("total_vector_count", 0)
         index.delete(delete_all=True) if n_vectors != 0 else None
 
     @staticmethod
     def store_interaction_in_db(embeddings_model, user_prompt, index, interaction):
+        """ Armazena informações no banco de dados vetorial"""
         user_embedding = embeddings_model.encode(user_prompt)
         data_id = str(interaction) + '_' + datetime.now().strftime("%Y%m%d_%H%M%S")
         index.upsert(
