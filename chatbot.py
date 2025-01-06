@@ -1,26 +1,26 @@
+from embedding import Embedding
 import os
 from dotenv import load_dotenv
 from langchain.schema import (HumanMessage)
-from langchain_groq import ChatGroq
-from pinecone import Pinecone, ServerlessSpec
-from sentence_transformers import SentenceTransformer
+from typing_extensions import TypedDict, List
+from typing import Annotated
 from datetime import datetime
+from langgraph.graph.message import add_messages
+from langchain_community.tools.tavily_search import TavilySearchResults
+from langchain_groq import ChatGroq
 
 
-class ChatBot:
+class ChatBot(Embedding):
 
     def __init__(self):
+        super().__init__()
         self.groq_api_key, self.openai_api_key, self.db_api_key = self.get_env_info()
+        self.messages = []
         self.chat = ChatGroq(temperature=0, model_name="llama-3.1-70b-versatile")
         self.chat_classifier_continuous_learning = self.chat_classifier_valid_correction = self.chat
-        self.db = Pinecone(api_key=self.db_api_key, environment="us-west1-gcp")
-        self.embeddings_model = SentenceTransformer('bert-base-nli-mean-tokens')
-        self.messages = []
-        self.checking_indexes()
-        self.index_preferences = self.get_index('index-preferences')
-        self.index_corrections = self.get_index('index-corrections')
         self.prev_question = self.prev_answer = None
         self.restarting_indexes()
+        self.check_correction_tool = [TavilySearchResults(max_results=3)]
 
     @staticmethod
     def get_env_info():
@@ -29,39 +29,6 @@ class ChatBot:
         openai_api_key = os.getenv("OPENAI_API_KEY")
         database_password = os.getenv("DB_API_KEY")
         return groq_api_key, openai_api_key, database_password
-
-    def checking_indexes(self):
-        self.creating_index_if_it_does_not_exists('index-preferences')
-        self.creating_index_if_it_does_not_exists('index-corrections')
-
-    def restarting_indexes(self):
-        self.erase_index_content(self.index_preferences)
-        self.erase_index_content(self.index_corrections)
-
-    def creating_index_if_it_does_not_exists(self, index_name):
-        existing_indexes = [i['name'] for i in self.db.list_indexes().to_dict()['indexes']]
-        if index_name not in existing_indexes:
-            self.db.create_index(
-                name=index_name,
-                dimension=768,
-                metric="cosine",
-                spec=ServerlessSpec(
-                    cloud="aws",
-                    region="us-east-1"
-                )
-            )
-
-    def get_index(self, index_name):
-        return self.db.Index(index_name)
-
-    def search_similar_context(self, query_text, index, k=3):
-        query_embedding = self.embeddings_model.embed(query_text)
-        result = index.query(
-            queries=[query_embedding.tolist()],
-            top_k=k,
-            include_values=True
-        )
-        return result
 
     def classifier_preference(self, user_message):
 
@@ -161,13 +128,5 @@ class ChatBot:
         self.prev_question = user_prompt
         self.prev_answer = ai_answer
 
-    @staticmethod
-    def erase_index_content(index):
-        stats_index = index.describe_index_stats().get("namespaces", {})
-        namespaces = stats_index.get("namespaces", {})
-        n_vectors = sum(ns.get("vector_count", 0) for ns in namespaces.values())
-        index.delete(delete_all=True) if n_vectors != 0 else None
-
 
 a = ChatBot()
-a.main()
