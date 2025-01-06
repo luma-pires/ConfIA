@@ -4,9 +4,9 @@ from datetime import datetime
 
 class DataBase:
 
-    def __init__(self):
+    def __init__(self, db_api_key):
+        self.db_api_key = db_api_key
         self.db = Pinecone(api_key=self.db_api_key, environment="us-west1-gcp")
-
         self.checking_indexes()
         self.index_preferences = self.get_index('index-preferences')
         self.index_corrections = self.get_index('index-corrections')

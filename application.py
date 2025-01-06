@@ -10,11 +10,12 @@ class Application:
     def run(self):
 
         st.title("Chatbot com Streamlit")
-        user_input = st.text_input("Digite sua pergunta:")
+        st.set_page_config(page_title="Chatbot", page_icon="💬")
+        st.header('Basic Chatbot')
+        st.write('Allows users to interact with the LLM')
+        user_input = st.chat_input(placeholder="Ask me anything!")
 
         if user_input:
+            st.write(user_input, 'user')
             response = self.chatbot.main(user_input)
-            st.write("Chatbot: ", response)
-
-        st.write(f"Última pergunta: {self.chatbot.prev_question}")
-        st.write(f"Última resposta: {self.chatbot.prev_answer}")
+            st.write(response, 'ai')

@@ -1,24 +1,22 @@
-from embedding import Embedding
 from db import DataBase
 from check_correction import Check_Correction
 import os
 from dotenv import load_dotenv
 from langchain.schema import (HumanMessage)
-from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_groq import ChatGroq
 
 
-class ChatBot(Embedding, DataBase, Check_Correction):
+class ChatBot(Check_Correction):
 
     def __init__(self):
         super().__init__()
         self.groq_api_key, self.openai_api_key, self.db_api_key = self.get_env_info()
         self.messages = []
+        self.db = DataBase(self.db_api_key)
         self.chat = ChatGroq(temperature=0, model_name="llama-3.1-70b-versatile")
         self.chat_classifier_continuous_learning = self.chat_classifier_valid_correction = self.chat
         self.prev_question = self.prev_answer = None
-        self.restarting_indexes()
-        self.check_correction_tool = [TavilySearchResults(max_results=3)]
+        self.db.restarting_indexes()
 
     @staticmethod
     def get_env_info():
@@ -47,14 +45,7 @@ class ChatBot(Embedding, DataBase, Check_Correction):
     def classifier_valid_correction(self, user_correction):
         valid_correction = False
         if self.prev_answer is not None and self.prev_question is not None:
-            prompt = (f"Considerando o diálogo abaixo, a correção do usuário está correta? Responda com Sim ou Não: \n"
-                      f"Usuário: {self.prev_question} \n"
-                      f"Resposta: {self.prev_answer}' \n"
-                      f"Usuário: {user_correction}")
-            corrections_labels = {'sim': True, 'não': False}
-            detected_classes = self.chat_classifier_valid_correction.invoke(prompt)
-            answer = detected_classes.content.replace('.', '').lower()
-            valid_correction = corrections_labels.get(answer, False)
+            valid_correction = self.validate_user_correction(user_correction, self.prev_question, self.prev_answer, self.chat)
         return valid_correction
 
     def interaction(self, user_prompt):
@@ -67,9 +58,9 @@ class ChatBot(Embedding, DataBase, Check_Correction):
         self.messages.append(user_prompt)
         is_preference = self.classifier_preference(HumanMessage(user_prompt))
         if is_preference:
-            self.store_interaction_in_db(self.embeddings_model, user_prompt, self.index_preferences, 'preference')
+            self.db.store_interaction_in_db(self.embeddings_model, user_prompt, self.db.index_preferences, 'preference')
         if self.classifier_valid_correction(user_prompt):
-            self.store_interaction_in_db(self.embeddings_model, user_prompt, self.index_corrections, 'correction')
+            self.db.store_interaction_in_db(self.embeddings_model, user_prompt, self.db.index_corrections, 'correction')
 
     def prompt_for_retrieving_relevant_info(self, user_query):
 
@@ -77,7 +68,7 @@ class ChatBot(Embedding, DataBase, Check_Correction):
         query_vector = self.embeddings_model.encode(user_query)
 
         # Preferences:
-        preferences_db = self.index_preferences.query(
+        preferences_db = self.db.index_preferences.query(
             vector=query_vector.tolist(),
             top_k=10,
             include_metadata=True
@@ -91,7 +82,7 @@ class ChatBot(Embedding, DataBase, Check_Correction):
                 if relevant_responses_preferences else context
 
         # Corrections:
-        corrections_db = self.index_corrections.query(
+        corrections_db = self.db.index_corrections.query(
             vector=query_vector.tolist(),
             top_k=10,
             include_metadata=True
@@ -118,6 +109,3 @@ class ChatBot(Embedding, DataBase, Check_Correction):
         ai_answer = self.interaction(user_prompt)
         self.prev_question = user_prompt
         self.prev_answer = ai_answer
-
-
-a = ChatBot()
