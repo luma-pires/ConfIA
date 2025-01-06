@@ -1,4 +1,0 @@
-langchain
-pinecone==5.4.2
-python-dotenv==1.0.1
-streamlit==1.41.1

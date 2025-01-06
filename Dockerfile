@@ -12,6 +12,7 @@ RUN pip install --no-cache-dir --upgrade pip
 # Instale as dependências
 RUN pip install --no-cache-dir -r requirements.txt
 
+
 # Exponha a porta que o Streamlit usará
 EXPOSE 8501
 
