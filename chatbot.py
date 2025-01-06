@@ -10,21 +10,20 @@ class ChatBot(Check_Correction):
 
     def __init__(self):
         super().__init__()
-        self.groq_api_key, self.openai_api_key, self.db_api_key = self.get_env_info()
+        self.groq_api_key, self.db_api_key = self.get_env_info()
         self.messages = []
         self.db = DataBase(self.db_api_key)
         self.chat = ChatGroq(temperature=0, model_name="llama-3.1-70b-versatile")
         self.chat_classifier_continuous_learning = self.chat_classifier_valid_correction = self.chat
         self.prev_question = self.prev_answer = None
-        self.db.restarting_indexes()
+        self.db.restarting_indexes(self.embeddings_model)
 
     @staticmethod
     def get_env_info():
         load_dotenv('./.env')
         groq_api_key = os.getenv("GROQ_API_KEY")
-        openai_api_key = os.getenv("OPENAI_API_KEY")
         database_password = os.getenv("DB_API_KEY")
-        return groq_api_key, openai_api_key, database_password
+        return groq_api_key, database_password
 
     def classifier_preference(self, user_message):
 
@@ -51,6 +50,9 @@ class ChatBot(Check_Correction):
     def interaction(self, user_prompt):
         self.write_prompt(user_prompt)
         ai_answer = self.informed_chat_answer(user_prompt)
+        saving_interaction_in_db = self.messages[-2] + '; ' + self.messages[-1]
+        self.db.store_interaction_in_db(self.embeddings_model, saving_interaction_in_db, self.db.index_corrections,
+                                        'interaction')
         return ai_answer
 
     def write_prompt(self, user_prompt):
@@ -60,6 +62,8 @@ class ChatBot(Check_Correction):
             self.db.store_interaction_in_db(self.embeddings_model, user_prompt, self.db.index_preferences, 'preference')
         if self.classifier_valid_info(user_prompt):
             self.db.store_interaction_in_db(self.embeddings_model, user_prompt, self.db.index_corrections, 'info')
+        else:
+            self.messages[-1] = self.messages[-1] + '. A informação desse input é falsa'
 
     def prompt_for_retrieving_relevant_info(self, user_query):
 
@@ -94,9 +98,9 @@ class ChatBot(Check_Correction):
             context = context + ' ' + 'Mais informações de contexto: ' + '\n'.join(relevant_responses_corrections) \
                 if relevant_responses_corrections else context
 
-        prompt = (f"Baseado no seguinte contexto:\n{context}\n\n"
-                  f"Retorne a melhor resposta para o input: {user_query}") if context != '' \
-            else f"Retorne a melhor resposta para o input: {user_query}"
+        prompt = (f"Baseado no seguinte contexto/histórico:\n{context}\n\n"
+                  f"Retorne a melhor resposta para o input a seguir (foque nessa pergunta): {user_query}") if context != '' \
+            else f"Retorne a melhor resposta para o input a seguir (foque nessa pergunta): {user_query}"
         return prompt
 
     def informed_chat_answer(self, user_message):
@@ -106,15 +110,14 @@ class ChatBot(Check_Correction):
         self.messages.append(f"Output da IA: {ai_answer}")
         return ai_answer
 
-    def get_context(self, prompt, k=10):
+    def get_context(self, prompt, k=4):
         """À medida que o histórico de mensagens cresce, o contexto necessário para gerar respostas pode se tornar
         muito grande, afetando a qualidade das respostas e aumentando o tempo e custo de processamento. Para
-        otimizar, o modelo considerará apenas os últimos 5 inputs do usuário e as 5 respostas da IA, totalizando 10
+        otimizar, o modelo considerará apenas os últimos 2 inputs do usuário e as 2 respostas da IA, totalizando 4
         mensagens. Esse parâmetro (k) pode ser ajustado futuramente.
         """
-        initial_context = 'Você é um chatbot projetado para ajudar as pessoas respondendo perguntas. Seu nome é ConfIA.'
         messages_considered = self.messages[-k:]
-        return f"{initial_context}. Tendo em vista o histórico das mensagens: {";".join(messages_considered)} {prompt}"
+        return f"Tendo em vista o histórico das mensagens, nessa ordem exata: [{";".join(messages_considered)}] {prompt}"
 
     def main(self, user_prompt):
         ai_answer = self.interaction(user_prompt)

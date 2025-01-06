@@ -16,11 +16,13 @@ class DataBase:
         self.creating_index_if_it_does_not_exists('index-preferences')
         self.creating_index_if_it_does_not_exists('index-corrections')
 
-    def restarting_indexes(self):
+    def restarting_indexes(self, embeddings_model):
         """ Quando o chat se reinicia, é preciso apagar a memória armazenada da interação anterior. Caso contrário ela
         pode interferir nas futuras respostas do chatbot"""
         self.erase_index_content(self.index_preferences)
         self.erase_index_content(self.index_corrections)
+        first_context = 'Seu nome é ConfIA e você é um chatbot que ajuda as pessoas conversando e respondendo perguntas'
+        self.store_interaction_in_db(embeddings_model, first_context, self.index_preferences, 'initial_context')
 
     def creating_index_if_it_does_not_exists(self, index_name):
         existing_indexes = [i['name'] for i in self.db.list_indexes().to_dict()['indexes']]
@@ -53,3 +55,4 @@ class DataBase:
         index.upsert(
             [(data_id, user_embedding.tolist(), {'original_question': user_prompt})]
         )
+        print('Stored')
