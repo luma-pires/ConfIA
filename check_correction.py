@@ -12,12 +12,12 @@ class Check_Correction(Embedding):
         informação na internet e verificar sua similaridade (embeddings) com o afirmado pelo usuário. Uma combinação
         dos métodos também é um bom caminho para tornar a verificação mais robusta."""
         methods_for_validating_user_correction = {'ai': self.validate_with_ai}
-        methods_for_validating_user_correction[method](user_correction, ai_model)
+        return methods_for_validating_user_correction[method](user_correction, ai_model)
 
     @staticmethod
     def validate_with_ai(user_correction, ai):
         """ Aqui utilizamos o próprio LLM para obter a validade da correção do usuário. O chatbot só aceitará/salvará
-        informações  que forem veridicas."""
+        informações  que forem verídicas."""
         prompt = f"Essa informação é falaciosa: {user_correction}? Responda apenas com sim ou não"
         detected_classes = ai.invoke(prompt)
         answer = detected_classes.content.replace('.', '').lower()
