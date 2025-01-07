@@ -1,3 +1,6 @@
+import os
+from dotenv import load_dotenv
+from db import DataBase
 from typing import Annotated
 from typing_extensions import TypedDict
 from langgraph.graph import StateGraph, START, END
@@ -9,19 +12,22 @@ class State(TypedDict):
     messages: Annotated[list, add_messages]
 
 
-class Graph:
+class Graph(DataBase):
 
-    def __init__(self, db, embeddings_model):
-        self.graph_builder = StateGraph(State)
-        self.embeddings_model = embeddings_model
+    def __init__(self):
+
+        super().__init__()
+        self.groq_api_key = self.get_llm_env_info()
         self.llm = ChatGroq(temperature=0, model_name="llama-3.1-70b-versatile")
-        self.built_graph()
-        self.graph = self.graph_builder.compile()
-        self.db = db
+
         self.latest_user_message = None
         self.index_insert_db = None
         self.context = None
         self.messages = []
+
+        self.graph_builder = StateGraph(State)
+        self.built_graph()
+        self.graph = self.graph_builder.compile()
 
     def main(self, user_prompt):
         self.latest_user_message = user_prompt
@@ -32,6 +38,12 @@ class Graph:
         self.graph.run(state)
         ai_answer = self.messages[-1]
         return ai_answer
+
+    @staticmethod
+    def get_llm_env_info():
+        load_dotenv('./.env')
+        groq_api_key = os.getenv("GROQ_API_KEY")
+        return groq_api_key
 
     def built_graph(self):
 
