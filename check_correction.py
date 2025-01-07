@@ -21,6 +21,8 @@ class Check_Correction:
                   f" sobre o usuário, etc, retorne não.")
         detected_classes = ai.invoke(prompt)
         answer = detected_classes.content.replace('.', '').lower()
+        print(user_correction)
+        print(answer)
         corrections_labels = {'não': True, 'sim': False}
         valid_correction = corrections_labels.get(answer, False)
         return valid_correction

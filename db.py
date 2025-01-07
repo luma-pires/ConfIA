@@ -49,9 +49,10 @@ class DataBase:
         n_vectors = stats_index.get("total_vector_count", 0)
         index.delete(delete_all=True) if n_vectors != 0 else None
 
-    def store_interaction_in_db(self, user_prompt, index, interaction):
+    def store_interaction_in_db(self, user_prompt, index):
         """ Armazena informações no banco de dados vetorial"""
         user_embedding = self.embeddings_model.embeddings_model.encode(user_prompt)
+        interaction = index.name
         data_id = str(interaction) + '_' + datetime.now().strftime("%Y%m%d_%H%M%S")
         index.upsert(
             [(data_id, user_embedding.tolist(), {'original_question': user_prompt})]
