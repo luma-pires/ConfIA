@@ -38,12 +38,8 @@ Com isso, clicar em um dos links (Local ou Network URL) que irão aparecer no te
 
 # Parâmetros
 
-LLM: Groq
+LLM: Llama
 
 Base de Dados Vetorial: Pinecone
 
 Encoder: BERT
-
-Memória de curto prazo do ConfIA: Últimas 6 mensagens (3 inputs - usuário - e 3 outputs - IA)
-
-
