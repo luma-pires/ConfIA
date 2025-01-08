@@ -40,7 +40,7 @@ docker build -t nome_da_imagem .
 
 Após isso, rodar:
 ```python
-docker run --name nome_do_container -p 8501:8501 nome_da_imagem
+docker run --name nome_do_container -p 8501:8501 --env-file .env nome_da_imagem
 ```
 Com isso, clicar em um dos links (Local ou Network URL) que irão aparecer no terminal. Ele levará à interface gráfica do ConfIA no seu navegador.
 
