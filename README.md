@@ -1,8 +1,14 @@
 # Título
 ConfIA: um chatbot de Aprendizado Contínuo
 
+![confia](https://github.com/user-attachments/assets/f8063271-e1a8-4b7a-9f78-9bc0f8bb9490)
+
 # Resumo
 Este projeto programa o comportamento do ConfIA, um chatbot capaz de aprender com as interações do usuário. Ele armazena as preferências de resposta do usuário, dentre outras informações fornecidas, em um banco de dados vetorial (Pinecone). O Chatbot é programado para não aceitar informações falaciosas. Essa verificação é feita a partir da classificação da informação fornecida entre falaciosa ou não falaciosa. A interface visual do Chatbot foi desenvolvida utilizando o Streamlit e o LLM utilizado é o Llama.
+
+# Modelo de Grafos
+![image](https://github.com/user-attachments/assets/28171b40-9697-49a1-8bcd-f1c8921183d5)
+
 
 # Primeiros Passos
 Certifique-se de adicionar um arquivo .env no diretório do projeto, contendo as seguintes informações:
@@ -36,9 +42,9 @@ docker run --name nome_do_container -p 8501:8501 nome_da_imagem
 ```
 Com isso, clicar em um dos links (Local ou Network URL) que irão aparecer no terminal. Ele levará à interface gráfica do ConfIA no seu navegador.
 
-# Parâmetros
+# Informações adicionais
 
-LLM: Llama
+LLM: Llama 3.1
 
 Base de Dados Vetorial: Pinecone
 
