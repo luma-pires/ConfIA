@@ -6,6 +6,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install pinecone \
     python-dotenv \
     langchain \
+    langgraph \
     streamlit \
     sentence-transformers \
     langchain-groq \
