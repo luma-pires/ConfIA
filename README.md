@@ -2,7 +2,7 @@
 ConfIA: um chatbot de Aprendizado Contínuo
 
 # Resumo
-Este projeto programa o comportamento do ConfIA, um chatbot capaz de aprender com as interações do usuário. Ele armazena as preferências de resposta do usuário, dentre outras informações fornecidas, em um banco de dados vetorial (Pinecone). O Chatbot é programado para não aceitar informações falaciosas. Essa verificação é feita a partir da classificação da informação fornecida entre falaciosa ou não falaciosa. A interface visual do Chatbot foi desenvolvida utilizando o Streamlit e o LLM utilizado é o Groq.
+Este projeto programa o comportamento do ConfIA, um chatbot capaz de aprender com as interações do usuário. Ele armazena as preferências de resposta do usuário, dentre outras informações fornecidas, em um banco de dados vetorial (Pinecone). O Chatbot é programado para não aceitar informações falaciosas. Essa verificação é feita a partir da classificação da informação fornecida entre falaciosa ou não falaciosa. A interface visual do Chatbot foi desenvolvida utilizando o Streamlit e o LLM utilizado é o Llama.
 
 # Primeiros Passos
 Certifique-se de adicionar um arquivo .env no diretório do projeto, contendo as seguintes informações:
@@ -38,12 +38,8 @@ Com isso, clicar em um dos links (Local ou Network URL) que irão aparecer no te
 
 # Parâmetros
 
-LLM: Groq
+LLM: Llama
 
 Base de Dados Vetorial: Pinecone
 
 Encoder: BERT
-
-Memória de curto prazo do ConfIA: Últimas 6 mensagens (3 inputs - usuário - e 3 outputs - IA)
-
-
