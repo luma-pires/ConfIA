@@ -1,5 +1,5 @@
 import streamlit as st
-from chatbot import ChatBot
+from chatbot_stream import ChatBot
 
 
 class Application:

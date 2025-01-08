@@ -29,7 +29,6 @@ class ChatBot(DataBase):
         answer = None
         for i in self.graph.stream({"message": user_prompt}):
             answer = self.messages[-1]
-            print(answer)
 
         return answer
 
@@ -101,7 +100,6 @@ class ChatBot(DataBase):
 
     def classifier_preferences(self, add=None):
         response = "answer_preference" if self.classifying_preference() else "validate_info"
-        print(response)
         return response
 
     def classifying_valid_info(self, add=None):
@@ -114,9 +112,6 @@ class ChatBot(DataBase):
         detected_class = self.llm.invoke(prompt).content
         answer = detected_class.replace('.', '').lower()
 
-        print(self.latest_user_message)
-        print(answer)
-
         is_valid_correction = corrections_labels.get(answer, False)
         self.index_insert_db = self.index_corrections if is_valid_correction else self.index_insert_db
 
@@ -124,7 +119,6 @@ class ChatBot(DataBase):
 
     def classifier_valid_info(self, add=None):
         response = "save_in_db" if self.classifying_preference() else "answer_incorrect_info"
-        print(response)
         return "save_in_db" if self.classifying_preference() else "answer_incorrect_info"
 
     def saving_in_db(self, add=None):

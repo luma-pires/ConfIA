@@ -65,4 +65,3 @@ class DataBase:
         index.upsert(
             [(data_id, user_embedding.tolist(), {'original_question': user_prompt})]
         )
-        print('Stored')
