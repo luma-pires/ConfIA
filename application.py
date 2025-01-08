@@ -16,7 +16,7 @@ class Application:
     @staticmethod
     def set_interface():
         st.set_page_config(page_title="ConfIA", page_icon="😉")
-        st.title("Olá, eu sou a ConfIA 😉")
+        st.title("Olá, eu sou o ConfIA 😉")
         st.subheader("Como posso ajudar você hoje?")
 
     @staticmethod
