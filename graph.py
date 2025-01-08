@@ -1,18 +1,11 @@
 import os
 from dotenv import load_dotenv
 from db import DataBase
-from typing import Annotated
-from typing_extensions import TypedDict
-from langgraph.graph import StateGraph, START, END
-from langgraph.graph.message import add_messages
+from langgraph.graph import Graph, START, END
 from langchain_groq import ChatGroq
 
 
-class State(TypedDict):
-    messages: Annotated[list, add_messages]
-
-
-class Graph(DataBase):
+class ChatBot(DataBase):
 
     def __init__(self):
 
@@ -25,19 +18,20 @@ class Graph(DataBase):
         self.context = None
         self.messages = []
 
-        self.graph_builder = StateGraph(State)
+        self.graph_builder = Graph()
         self.built_graph()
         self.graph = self.graph_builder.compile()
 
     def main(self, user_prompt):
         self.latest_user_message = user_prompt
         self.messages.append(self.latest_user_message)
-        state = {
-            "messages": [{"role": "user", "content": self.latest_user_message}]
-        }
-        self.graph.run(state)
-        ai_answer = self.messages[-1]
-        return ai_answer
+
+        answer = None
+        for i in self.graph.stream({"message": user_prompt}):
+            answer = self.messages[-1]
+            print(answer)
+
+        return answer
 
     @staticmethod
     def get_llm_env_info():
@@ -46,8 +40,10 @@ class Graph(DataBase):
         return groq_api_key
 
     def built_graph(self):
+        self.built_nodes()
+        self.built_edges()
 
-        # Nodes/Nós:
+    def built_nodes(self):
 
         self.graph_builder.add_node("classify_preference", self.classifying_preference)
         self.graph_builder.add_node("validate_info", self.classifying_valid_info)
@@ -57,15 +53,9 @@ class Graph(DataBase):
         self.graph_builder.add_node("answer_info_incorrect", self.deal_with_incorrect_input)
         self.graph_builder.add_node("answer_preference", self.answer_preference)
 
-        # Edges/Arestas:
+    def built_edges(self):
 
         self.graph_builder.add_edge(START, "classify_preference")
-
-        self.graph_builder.add_conditional_edge(
-            "classify_preference",
-            "answer_preference",
-            condition=lambda state: state.get("classify_preference", True)
-        )
 
         self.graph_builder.add_edge("answer_preference", "save_in_db")
 
@@ -73,29 +63,23 @@ class Graph(DataBase):
 
         self.graph_builder.add_edge("context", "answer")
 
-        self.graph_builder.add_conditional_edge(
-            "classify_preference",
-            "validate_info",
-            condition=lambda state: state.get("classify_preference", False)
-        )
-
-        self.graph_builder.add_conditional_edge(
-            "validate_info",
-            "save_in_db",
-            condition=lambda state: state.get("validate_info", True)
-        )
-
-        self.graph_builder.add_conditional_edge(
-            "validate_info",
-            "answer_info_incorrect",
-            condition=lambda state: state.get("validate_info", False)
-        )
-
         self.graph_builder.add_edge("answer", END)
 
         self.graph_builder.add_edge("answer_info_incorrect", END)
 
-    def classifying_preference(self, state: State):
+        self.graph_builder.add_conditional_edges(
+            "classify_preference",
+            self.classifying_preference,
+            {True: "answer_preference", False: "validate_info"},
+        )
+
+        self.graph_builder.add_conditional_edges(
+            "validate_info",
+            self.classifying_valid_info,
+            {True: 'save_in_db', False: 'answer_info_incorrect'}
+        )
+
+    def classifying_preference(self, add=None):
 
         preference_labels = {'Envolve preferências sobre como a resposta deve ser dada': True,
                              'Não envolve preferências sobre como a resposta deve ser dada': False}
@@ -115,7 +99,12 @@ class Graph(DataBase):
 
         return is_preference
 
-    def classifying_valid_info(self, state: State):
+    def classifier_preferences(self, add=None):
+        response = "answer_preference" if self.classifying_preference() else "validate_info"
+        print(response)
+        return response
+
+    def classifying_valid_info(self, add=None):
 
         corrections_labels = {'não': True, 'sim': False}
 
@@ -129,28 +118,33 @@ class Graph(DataBase):
         print(answer)
 
         is_valid_correction = corrections_labels.get(answer, False)
-        self.index_insert_db = self.db.index_corrections if is_valid_correction else self.index_insert_db
+        self.index_insert_db = self.index_corrections if is_valid_correction else self.index_insert_db
 
         return is_valid_correction
 
-    def saving_in_db(self, state: State):
-        self.db.store_interaction_in_db(self.latest_user_message, self.index_insert_db)
+    def classifier_valid_info(self, add=None):
+        response = "save_in_db" if self.classifying_preference() else "answer_incorrect_info"
+        print(response)
+        return "save_in_db" if self.classifying_preference() else "answer_incorrect_info"
 
-    def get_context(self, state: State):
+    def saving_in_db(self, add=None):
+        self.store_interaction_in_db(self.latest_user_message, self.index_insert_db)
+
+    def get_context(self, add=None):
 
         related_info_in_db = self.retrieving_related_info_from_past_messages_with_db()
         message_history = self.getting_context_from_latest_k_messages()
 
         self.context = related_info_in_db + '; ' + message_history
 
-    def retrieving_related_info_from_past_messages_with_db(self):
+    def retrieving_related_info_from_past_messages_with_db(self, add=None):
 
         context = ''
         user_query = self.latest_user_message
 
-        query_vector = self.embeddings_model.embeddings_model.encode(user_query)
+        query_vector = self.embeddings_model.encode(user_query)
 
-        preferences_db = self.db.index_preferences.query(
+        preferences_db = self.index_preferences.query(
             vector=query_vector.tolist(),
             top_k=5,
             include_metadata=True
@@ -164,7 +158,7 @@ class Graph(DataBase):
             context = 'Preferências de estilos de resposta do usuário: ' + '\n'.join(relevant_responses_preferences) \
                 if relevant_responses_preferences else context
 
-        corrections_db = self.db.index_corrections.query(
+        corrections_db = self.index_corrections.query(
             vector=query_vector.tolist(),
             top_k=10,
             include_metadata=True
@@ -179,8 +173,9 @@ class Graph(DataBase):
                        '\n'.join(relevant_responses_corrections)) if relevant_responses_corrections else context
 
         prompt = (f"Baseado no seguinte contexto:\n{context}\n"
-                  f"Retorne a melhor resposta para pergunta a seguir (foque nessa pergunta): {user_query}") if context != '' \
-            else f"Retorne a melhor resposta para a pergunta a seguir (foque nessa pergunta): {user_query}"
+                  f"Retorne a melhor resposta para pergunta a seguir (foque nessa pergunta): {user_query}") if (
+                context != '') else (f"Retorne a melhor resposta para a pergunta a seguir (foque nessa pergunta): "
+                                     f"{user_query}")
 
         return prompt
 
@@ -198,15 +193,15 @@ class Graph(DataBase):
         response = self.llm.invoke(self.context).content
         self.messages.append(f"Resposta da IA: {response}")
 
-    def answer(self, state: State):
+    def answer(self, add=None):
         self.response_ai()
 
-    def deal_with_incorrect_input(self, state: State):
+    def deal_with_incorrect_input(self, add=None):
         self.latest_user_message = ('Há grandes chances de que essa informação fornecida pelo usuário seja falsa' + ' '
                                     + self.latest_user_message)
         self.context = self.latest_user_message
         self.response_ai()
 
-    def answer_preference(self, state: State):
+    def answer_preference(self, add=None):
         self.context = f'O usuário enviou uma preferência de estilos de resposta: {self.latest_user_message}'
         self.response_ai()
